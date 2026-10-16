@@ -158,6 +158,7 @@ jobs:
 
       - name: Xcode build (unsigned)
         run: |
+          set +e
           cd xcode
           BUILD=(-project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos
             -derivedDataPath "$PWD/dd" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="")
