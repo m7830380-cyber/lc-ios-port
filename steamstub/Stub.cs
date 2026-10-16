@@ -100,7 +100,7 @@ namespace Steamworks.ServerList
 
 namespace Steamworks.Data
 {
-	public class LobbyQuery
+	public struct LobbyQuery
 	{
 		public LobbyQuery WithMaxResults(int n) { return this; }
 		public LobbyQuery WithKeyValue(string key, string value) { return this; }
