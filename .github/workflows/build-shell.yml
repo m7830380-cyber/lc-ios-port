@@ -167,13 +167,11 @@ jobs:
           if [ $rc != 0 ] && grep -q "Undefined symbols" xcodebuild.log; then
             # Unity emits registration calls for native modules this iOS player does not link. Stub only the
             # unresolved Register_* names, taken from the link itself (no game content involved). Terse output.
+            # The unresolved references live in the project's own objects, so take them from the linker report.
             mkdir -p stubs
-            find . -name '*.a' -not -path './dd/*' > stubs/libs.txt
-            while read -r a; do nm -u "$a" 2>/dev/null; done < stubs/libs.txt | awk '{print $NF}' | grep '^__Z[0-9]*Register_' | sort -u > stubs/undef.mangled || true
-            while read -r a; do nm -gU "$a" 2>/dev/null; done < stubs/libs.txt | awk '{print $NF}' | sort -u > stubs/def.mangled || true
-            comm -23 stubs/undef.mangled stubs/def.mangled > stubs/missing.mangled
-            c++filt < stubs/missing.mangled | sed 's/()$//' > stubs/names.txt
-            echo "unresolved registration stubs: $(wc -l < stubs/names.txt)"
+            grep -E '^ +"[^"]+", referenced from:' xcodebuild.log | sed -E 's/^ +"//; s/", referenced from:$//; s/\(\)$//' | sort -u > stubs/all.txt || true
+            grep -E '^[A-Za-z][A-Za-z0-9_]*$' stubs/all.txt > stubs/names.txt || true
+            echo "unresolved symbols: $(wc -l < stubs/all.txt), stubbed: $(wc -l < stubs/names.txt)"
             { echo '// generated at build time from unresolved link symbols'; sed 's/.*/void &() {}/' stubs/names.txt; } > stubs/AutoStubs.cpp
             xcrun --sdk iphoneos clang++ -arch arm64 -miphoneos-version-min=12.0 -c stubs/AutoStubs.cpp -o stubs/AutoStubs.o
             ar rcs stubs/libautostubs.a stubs/AutoStubs.o
