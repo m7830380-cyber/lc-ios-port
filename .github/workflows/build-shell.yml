@@ -109,7 +109,7 @@ jobs:
           mkdir -p "$HOME/Library/Unity/cache"
           OK="License activated successfully|license is already valid and activated|Successfully activated"
           for attempt in 1 2; do
-            ci/unity.sh /tmp/activate.log 300 "$OK" -quit -serial "$SERIAL" -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" -projectPath /tmp/activate-project
+            bash ci/unity.sh /tmp/activate.log 300 "$OK" -quit -serial "$SERIAL" -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" -projectPath /tmp/activate-project
             rc=$?
             echo "attempt $attempt: exit code $rc"
             [ $rc = 0 ] && break
@@ -127,7 +127,7 @@ jobs:
           SHELL_DEBUG_OUT: ${{ github.workspace }}/staged-managed
         run: |
           set +e
-          ci/unity.sh "$PWD/unity.log" 5100 "" -quit -projectPath "$PWD/shell" -buildTarget iOS -executeMethod IosShellBuild.Build
+          bash ci/unity.sh "$PWD/unity.log" 5100 "" -quit -projectPath "$PWD/shell" -buildTarget iOS -executeMethod IosShellBuild.Build
           rc=$?
           echo "---- error lines"; grep -n -i -E "error|exception|failed|cannot|could not" unity.log | grep -v -i "warning" | head -n 100
           echo "---- last lines"; tail -n 120 unity.log
@@ -142,7 +142,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
           [ -x /Applications/Unity/Unity.app/Contents/MacOS/Unity ] || exit 0
-          ci/unity.sh /tmp/return.log 150 "" -quit -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" || true
+          bash ci/unity.sh /tmp/return.log 150 "" -quit -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" || true
 
       # Linked assemblies of a failed IL2CPP run go to the PRIVATE repo only (they contain game code).
       - name: Upload staged assemblies for debugging (private repo)
