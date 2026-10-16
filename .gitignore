@@ -2,3 +2,5 @@ lc-work/
 lc-original/
 *.dll
 *.ipa
+steamstub/bin/
+steamstub/obj/
