@@ -1,4 +1,4 @@
-﻿// Steam stub for the iOS port. No Steam, no network. Every call is a no-op or returns empty.
+// Steam stub for the iOS port. No Steam, no network. Every call is a no-op or returns empty.
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -63,13 +63,13 @@ namespace Steamworks
 
 	public static class SteamMatchmaking
 	{
-		public static event Action<Steamworks.Data.Result, Steamworks.Data.Lobby> OnLobbyCreated;
+		public static event Action<Steamworks.Result, Steamworks.Data.Lobby> OnLobbyCreated;
 		public static event Action<Steamworks.Data.Lobby, Friend> OnLobbyMemberJoined;
 		public static event Action<Steamworks.Data.Lobby, Friend> OnLobbyMemberLeave;
 		public static event Action<Friend, Steamworks.Data.Lobby> OnLobbyInvite;
 		public static event Action<Steamworks.Data.Lobby, uint, ushort, SteamId> OnLobbyGameCreated;
 		public static event Action<Steamworks.Data.Lobby> OnLobbyDataChanged;
-		public static ServerList.LobbyQuery LobbyList => new ServerList.LobbyQuery();
+		public static Steamworks.Data.LobbyQuery LobbyList => new Steamworks.Data.LobbyQuery();
 		public static Task<Steamworks.Data.Lobby?> CreateLobbyAsync(int maxMembers) { return Task.FromResult<Steamworks.Data.Lobby?>(null); }
 	}
 
@@ -96,6 +96,10 @@ namespace Steamworks.ServerList
 {
 	public class Internet { }
 
+}
+
+namespace Steamworks.Data
+{
 	public class LobbyQuery
 	{
 		public LobbyQuery WithMaxResults(int n) { return this; }
@@ -106,10 +110,7 @@ namespace Steamworks.ServerList
 		public LobbyQuery FilterDistanceWorldwide() { return this; }
 		public Task<Steamworks.Data.Lobby[]> RequestAsync() { return Task.FromResult(new Steamworks.Data.Lobby[0]); }
 	}
-}
 
-namespace Steamworks.Data
-{
 	public enum SendType { Unreliable = 0, NoNagle = 8, NoDelay = 4, Reliable = 8 | 1 }
 
 	public class NetIdentity
@@ -133,16 +134,14 @@ namespace Steamworks.Data
 
 	public class LeaderboardEntry
 	{
-		public SteamId User;
+		public Friend User;
 		public int GlobalRank;
 		public int Score;
 		public int[] Details;
 		public string Name => string.Empty;
 	}
 
-	public enum RoomEnter { Success, DoesntExist, NotAllowed, Full, Error, Banned, Limited, ClanDisabled, CommunityBan, MemberBlockedYou, YouBlockedMember, RatelimitExceeded }
 
-	public enum Result { OK = 1, Fail = 2 }
 	public enum LeaderboardSort { None, Ascending, Descending }
 	public enum LeaderboardDisplay { None, Numeric, TimeSeconds, TimeMilliSeconds }
 
@@ -240,3 +239,14 @@ namespace Steamworks
 }
 
 
+
+
+namespace Steamworks
+{
+}
+
+namespace Steamworks
+{
+	public enum Result { OK = 1, Fail = 2 }
+	public enum RoomEnter { Success, DoesntExist, NotAllowed, Full, Error, Banned, Limited, ClanDisabled, CommunityBan, MemberBlockedYou, YouBlockedMember, RatelimitExceeded }
+}
