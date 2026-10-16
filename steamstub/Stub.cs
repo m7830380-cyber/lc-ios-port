@@ -1,4 +1,4 @@
-// Steam stub for the iOS port. No Steam, no network. Every call is a no-op or returns empty.
+﻿// Steam stub for the iOS port. No Steam, no network. Every call is a no-op or returns empty.
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -31,8 +31,21 @@ namespace Steamworks
 		public static string Name => "Player";
 		public static bool IsValid => false;
 		public static bool IsLoggedOn => false;
+		public static void Init(uint appId, bool asyncCallbacks = true) { }
 		public static void Shutdown() { }
 		public static void RunCallbacks() { }
+	}
+
+	public static class SteamNetworkingUtils
+	{
+		public static void InitRelayNetworkAccess() { }
+	}
+
+	// Networking entry points used by Facepunch Transport for NGO. Inert: nothing is ever created by a real socket.
+	public static class SteamNetworkingSockets
+	{
+		public static T ConnectRelay<T>(SteamId target) where T : Steamworks.Data.ConnectionManager, new() { return new T(); }
+		public static T CreateRelaySocket<T>(int virtualPort = 0) where T : Steamworks.Data.SocketManager, new() { return new T(); }
 	}
 
 	public static class SteamFriends
@@ -42,8 +55,8 @@ namespace Steamworks
 		public static void ClearRichPresence() { }
 		public static void OpenUserOverlay(SteamId id, string dialog) { }
 		public static void OpenGameInviteOverlay(SteamId lobby) { }
-			public static IEnumerable<Friend> GetFriends() { return new List<Friend>(); }
-	public static IEnumerable<Friend> GetBlocked() { return new List<Friend>(); }
+		public static IEnumerable<Friend> GetFriends() { return new List<Friend>(); }
+		public static IEnumerable<Friend> GetBlocked() { return new List<Friend>(); }
 		public static Task<Steamworks.Data.Image?> GetLargeAvatarAsync(SteamId id) { return Task.FromResult<Steamworks.Data.Image?>(null); }
 		public static Task<Steamworks.Data.Image?> GetSmallAvatarAsync(SteamId id) { return Task.FromResult<Steamworks.Data.Image?>(null); }
 	}
@@ -97,6 +110,66 @@ namespace Steamworks.ServerList
 
 namespace Steamworks.Data
 {
+	public enum SendType { Unreliable = 0, NoNagle = 8, NoDelay = 4, Reliable = 8 | 1 }
+
+	public class NetIdentity
+	{
+		public SteamId SteamId => default(SteamId);
+	}
+
+	public class ConnectionInfo
+	{
+		public NetIdentity Identity = new NetIdentity();
+	}
+
+	public class Connection
+	{
+		public uint Id;
+		public bool Accept() { return false; }
+		public void Close() { }
+		public void Flush() { }
+		public Result SendMessage(byte[] data, int offset, int length, SendType sendType) { return Result.Fail; }
+	}
+
+	public interface IConnectionManager
+	{
+		void OnConnecting(ConnectionInfo info);
+		void OnConnected(ConnectionInfo info);
+		void OnDisconnected(ConnectionInfo info);
+		void OnMessage(IntPtr data, int size, long messageNum, long recvTime, int channel);
+	}
+
+	public interface ISocketManager
+	{
+		void OnConnecting(Connection connection, ConnectionInfo info);
+		void OnConnected(Connection connection, ConnectionInfo info);
+		void OnDisconnected(Connection connection, ConnectionInfo info);
+		void OnMessage(Connection connection, NetIdentity identity, IntPtr data, int size, long messageNum, long recvTime, int channel);
+	}
+
+	public class ConnectionManager : IConnectionManager
+	{
+		public Connection Connection = new Connection();
+		public IConnectionManager Interface;
+		public void Close() { }
+		public void Receive(int maxMessages = 32) { }
+		public virtual void OnConnecting(ConnectionInfo info) { }
+		public virtual void OnConnected(ConnectionInfo info) { }
+		public virtual void OnDisconnected(ConnectionInfo info) { }
+		public virtual void OnMessage(IntPtr data, int size, long messageNum, long recvTime, int channel) { }
+	}
+
+	public class SocketManager : ISocketManager
+	{
+		public ISocketManager Interface;
+		public void Close() { }
+		public void Receive(int maxMessages = 32) { }
+		public virtual void OnConnecting(Connection connection, ConnectionInfo info) { }
+		public virtual void OnConnected(Connection connection, ConnectionInfo info) { }
+		public virtual void OnDisconnected(Connection connection, ConnectionInfo info) { }
+		public virtual void OnMessage(Connection connection, NetIdentity identity, IntPtr data, int size, long messageNum, long recvTime, int channel) { }
+	}
+
 	public class LeaderboardEntry
 	{
 		public SteamId User;
@@ -159,3 +232,4 @@ namespace Steamworks.Data
 		public Task<LeaderboardUpdate?> ReplaceScore(int score, int[] details) { return Task.FromResult<LeaderboardUpdate?>(null); }
 	}
 }
+
