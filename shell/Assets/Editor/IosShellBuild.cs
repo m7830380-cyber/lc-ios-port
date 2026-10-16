@@ -18,6 +18,24 @@ public static class IosShellBuild
     const string ScenePath = "Assets/Scenes/Boot.unity";
     static readonly NamedBuildTarget Target = NamedBuildTarget.iOS;
 
+    // The VT switch is not public API in every 2022.3 build, so try the known routes and log which one worked.
+    static void SetVirtualTexturing(bool on)
+    {
+        const System.Reflection.BindingFlags F = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+        var prop = typeof(PlayerSettings).GetProperty("virtualTexturingSupportEnabled", F);
+        if (prop != null) { prop.SetValue(null, on); Debug.Log("[LCSHELL] VT set via property"); return; }
+        var m = typeof(PlayerSettings).GetMethod("SetVirtualTexturingSupportEnabled", F, null, new[] { typeof(bool) }, null);
+        if (m != null) { m.Invoke(null, new object[] { on }); Debug.Log("[LCSHELL] VT set via method"); return; }
+        var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset");
+        if (assets != null && assets.Length > 0)
+        {
+            var so = new SerializedObject(assets[0]);
+            var sp = so.FindProperty("virtualTexturingSupportEnabled");
+            if (sp != null) { sp.boolValue = on; so.ApplyModifiedPropertiesWithoutUndo(); Debug.Log("[LCSHELL] VT set via serialized settings"); return; }
+        }
+        Debug.LogError("[LCSHELL] VT switch not found; HDRP link may fail");
+    }
+
     public static void Build()
     {
         string outDir = Environment.GetEnvironmentVariable("SHELL_OUT") ?? "Build/iOS";
@@ -48,7 +66,7 @@ public static class IosShellBuild
         PlayerSettings.colorSpace = ColorSpace.Linear;      // same as the retail game (HDRP)
         PlayerSettings.gpuSkinning = true;                  // same as the retail game
         // HDRP references the Virtual Texturing module; without this the iOS player does not link its native code.
-        PlayerSettings.virtualTexturingSupportEnabled = true;
+        SetVirtualTexturing(true);
         PlayerSettings.MTRendering = true;
         PlayerSettings.iOS.targetOSVersionString = "15.0";
         PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
