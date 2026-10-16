@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Steamworks
 {
-	public class Friend
+	public struct Friend
 	{
 		public SteamId Id;
 		public bool IsFriend => false;
@@ -113,17 +113,17 @@ namespace Steamworks.Data
 
 	public enum SendType { Unreliable = 0, NoNagle = 8, NoDelay = 4, Reliable = 8 | 1 }
 
-	public class NetIdentity
+	public struct NetIdentity
 	{
 		public SteamId SteamId => default(SteamId);
 	}
 
-	public class ConnectionInfo
+	public struct ConnectionInfo
 	{
-		public NetIdentity Identity = new NetIdentity();
+		public NetIdentity Identity;
 	}
 
-	public class Connection
+	public struct Connection
 	{
 		public uint Id;
 		public bool Accept() { return false; }
@@ -132,7 +132,7 @@ namespace Steamworks.Data
 		public Result SendMessage(byte[] data, int offset, int length, SendType sendType) { return Result.Fail; }
 	}
 
-	public class LeaderboardEntry
+	public struct LeaderboardEntry
 	{
 		public Friend User;
 		public int GlobalRank;
