@@ -158,22 +158,29 @@ jobs:
 
       - name: Xcode build (unsigned)
         run: |
-          set -euo pipefail
           cd xcode
-          set +e
-          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release \
-            -sdk iphoneos -derivedDataPath "$PWD/dd" \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" \
-            build > xcodebuild.log 2>&1
+          BUILD=(-project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos
+            -derivedDataPath "$PWD/dd" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="")
+          xcodebuild "${BUILD[@]}" build > xcodebuild.log 2>&1
           rc=$?
-          set -e
-          # diagnostic (engine library names and symbol counts only)
-          echo "VT in pbxproj: $(grep -c -i virtualtex Unity-iPhone.xcodeproj/project.pbxproj || true)"
-          for a in $(find . -name '*.a' -not -path './dd/*' | head -n 40); do
-            echo "lib $(basename "$a") VT-defs=$(nm -g "$a" 2>/dev/null | grep -c 'T .*VirtualTexturing' || true)"
-          done
-          grep -E "error:|Undefined symbol|\*\* BUILD" xcodebuild.log | head -n 120 || true
-          tail -n 40 xcodebuild.log
+          if [ $rc != 0 ] && grep -q "Undefined symbols" xcodebuild.log; then
+            # Unity emits registration calls for native modules this iOS player does not link. Stub only the
+            # unresolved Register_* names, taken from the link itself (no game content involved). Terse output.
+            mkdir -p stubs
+            find . -name '*.a' -not -path './dd/*' > stubs/libs.txt
+            while read -r a; do nm -u "$a" 2>/dev/null; done < stubs/libs.txt | awk '{print $NF}' | grep '^__Z[0-9]*Register_' | sort -u > stubs/undef.mangled || true
+            while read -r a; do nm -gU "$a" 2>/dev/null; done < stubs/libs.txt | awk '{print $NF}' | sort -u > stubs/def.mangled || true
+            comm -23 stubs/undef.mangled stubs/def.mangled > stubs/missing.mangled
+            c++filt < stubs/missing.mangled | sed 's/()$//' > stubs/names.txt
+            echo "unresolved registration stubs: $(wc -l < stubs/names.txt)"
+            { echo '// generated at build time from unresolved link symbols'; sed 's/.*/void &() {}/' stubs/names.txt; } > stubs/AutoStubs.cpp
+            xcrun --sdk iphoneos clang++ -arch arm64 -miphoneos-version-min=12.0 -c stubs/AutoStubs.cpp -o stubs/AutoStubs.o
+            ar rcs stubs/libautostubs.a stubs/AutoStubs.o
+            xcodebuild "${BUILD[@]}" OTHER_LDFLAGS='$(inherited) -L'"$PWD"'/stubs -lautostubs' build > xcodebuild.log 2>&1
+            rc=$?
+          fi
+          echo "---- error lines"; grep -E "error:|Undefined symbol|\*\* BUILD" xcodebuild.log | head -n 60 || true
+          tail -n 30 xcodebuild.log
           exit $rc
 
       # TrollStore installs fakesigned apps; the entitlements lift the memory limit (the game data and recordings are large).
