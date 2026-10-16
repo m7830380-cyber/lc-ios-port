@@ -47,6 +47,8 @@ public static class IosShellBuild
         PlayerSettings.SetGraphicsAPIs(BuildTarget.iOS, new[] { GraphicsDeviceType.Metal });
         PlayerSettings.colorSpace = ColorSpace.Linear;      // same as the retail game (HDRP)
         PlayerSettings.gpuSkinning = true;                  // same as the retail game
+        // HDRP references the Virtual Texturing module; without this the iOS player does not link its native code.
+        PlayerSettings.virtualTexturingSupportEnabled = true;
         PlayerSettings.MTRendering = true;
         PlayerSettings.iOS.targetOSVersionString = "15.0";
         PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
