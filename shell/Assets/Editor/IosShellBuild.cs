@@ -53,7 +53,6 @@ public static class IosShellBuild
         PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
         PlayerSettings.iOS.requiresFullScreen = true;
         PlayerSettings.iOS.hideHomeButton = true;
-        PlayerSettings.iOS.deferSystemGesturesMode = UnityEngine.iOS.SystemGestureDeferMode.All;
         PlayerSettings.iOS.microphoneUsageDescription = "Lethal Company uses the microphone for your voice in the game. You can turn it off in the iOS settings of the game.";
         PlayerSettings.iOS.appInBackgroundBehavior = iOSAppInBackgroundBehavior.Suspend;
         PlayerSettings.statusBarHidden = true;
