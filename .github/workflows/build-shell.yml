@@ -167,6 +167,11 @@ jobs:
             build > xcodebuild.log 2>&1
           rc=$?
           set -e
+          # diagnostic (engine library names and symbol counts only)
+          echo "VT in pbxproj: $(grep -c -i virtualtex Unity-iPhone.xcodeproj/project.pbxproj || true)"
+          for a in $(find . -name '*.a' -not -path './dd/*' | head -n 40); do
+            echo "lib $(basename "$a") VT-defs=$(nm -g "$a" 2>/dev/null | grep -c 'T .*VirtualTexturing' || true)"
+          done
           grep -E "error:|Undefined symbol|\*\* BUILD" xcodebuild.log | head -n 120 || true
           tail -n 40 xcodebuild.log
           exit $rc
