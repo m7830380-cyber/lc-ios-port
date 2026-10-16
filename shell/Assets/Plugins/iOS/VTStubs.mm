@@ -1,0 +1,20 @@
+// Virtual texturing is not used by Lethal Company. Unity still emits registration calls for these internal
+// calls (RegisterAllStrippedInternalCalls) but the native module is absent from the iOS player, so the link fails.
+// No-op definitions satisfy the linker; nothing in the game calls them.
+#include <Foundation/Foundation.h>
+
+void Register_UnityEngine_Rendering_VirtualTexturing_Debugging_get_flushEveryTickEnabled() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Debugging_get_mipPreloadedTextureCount() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Debugging_set_flushEveryTickEnabled() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_EditorHelpers_QuerySupportedFormats() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_EditorHelpers_ValidateMaterialTextureStacks() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_EditorHelpers_ValidateTextureStack() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_BindToMaterialPropertyBlock() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_Create_Injected() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_EvictRegion_Injected() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_GetRequestParameters() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_InvalidateRegion_Injected() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_RequestRegion_Injected() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_Binding_UpdateRequestState() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_GetGPUCacheStagingAreaCapacity() {}
+void Register_UnityEngine_Rendering_VirtualTexturing_Procedural_SetGPUCacheStagingAreaCapacity() {}
