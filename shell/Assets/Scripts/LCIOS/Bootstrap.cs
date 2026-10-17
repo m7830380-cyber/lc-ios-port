@@ -36,6 +36,9 @@ namespace LCIOS
                 Log.Info("texture mip limit set to 1 (half-size textures)");
                 TouchProbe.Install();
                 RenderProbe.Install();
+                RenderFix.Install();
+                TouchControls.Install();
+                UiScale.Install();
             }
             catch (Exception e)
             {

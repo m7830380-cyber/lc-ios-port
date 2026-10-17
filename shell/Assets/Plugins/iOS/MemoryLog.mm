@@ -77,15 +77,20 @@ __attribute__((constructor)) static void LCMemoryLogInstall(void)
     [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidReceiveMemoryWarningNotification
                                                       object:nil
                                                        queue:nil
-                                                  usingBlock:^(NSNotification *note) { LCMemoryFootprint("memory warning"); }];
+                                                  usingBlock:^(NSNotification *note) {
+        LCMemoryFootprint("memory warning");
+        // iOS drops the limit back to ~4.1 GB around memory warnings; restore it at once.
+        if (gWantedLimitMB) LCRaiseLimit(gWantedLimitMB);
+    }];
 
     dispatch_queue_t queue = dispatch_queue_create("lc.memlog", DISPATCH_QUEUE_SERIAL);
     gTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
-    dispatch_source_set_timer(gTimer, dispatch_time(DISPATCH_TIME_NOW, 0), 5 * NSEC_PER_SEC, NSEC_PER_SEC);
+    dispatch_source_set_timer(gTimer, dispatch_time(DISPATCH_TIME_NOW, 0), NSEC_PER_SEC, NSEC_PER_SEC / 10);
     dispatch_source_set_event_handler(gTimer, ^{
-        // iOS may reset the limit when the app changes state; put it back.
+        static int tick;
+        // iOS resets the limit now and then (seen around memory warnings); put it back every second.
         if (gWantedLimitMB) LCRaiseLimit(gWantedLimitMB);
-        LCMemoryFootprint("periodic");
+        if (tick++ % 5 == 0) LCMemoryFootprint("periodic");
     });
     dispatch_resume(gTimer);
 }
