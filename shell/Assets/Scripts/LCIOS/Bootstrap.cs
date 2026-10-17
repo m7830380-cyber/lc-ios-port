@@ -23,6 +23,7 @@ namespace LCIOS
                 Application.lowMemory += () => Log.Warn("low memory warning");
                 SceneManager.sceneLoaded += (s, mode) => Log.Info($"scene loaded: '{s.name}' ({mode}) roots={s.rootCount}");
                 TouchProbe.Install();
+                RenderProbe.Install();
             }
             catch (Exception e)
             {
