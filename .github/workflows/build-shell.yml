@@ -201,6 +201,7 @@ jobs:
             <key>application-identifier</key><string>com.cw.iosport</string>
             <key>com.apple.developer.kernel.increased-memory-limit</key><true/>
             <key>com.apple.developer.kernel.extended-virtual-addressing</key><true/>
+            <key>com.apple.private.memorystatus</key><true/>
             <key>get-task-allow</key><true/>
           </dict>
           </plist>

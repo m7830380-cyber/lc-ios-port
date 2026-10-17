@@ -31,6 +31,9 @@ namespace LCIOS
                 };
                 SceneManager.sceneLoaded += (s, mode) => Log.Info($"scene loaded: '{s.name}' ({mode}) roots={s.rootCount}");
                 HalfResolution();
+                // Skip each texture's largest mip level: about a quarter of the texture memory, slightly softer textures.
+                QualitySettings.globalTextureMipmapLimit = 1;
+                Log.Info("texture mip limit set to 1 (half-size textures)");
                 TouchProbe.Install();
                 RenderProbe.Install();
             }
