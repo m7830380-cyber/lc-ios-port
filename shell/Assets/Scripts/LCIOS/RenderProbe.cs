@@ -22,7 +22,42 @@ namespace LCIOS
             DontDestroyOnLoad(go);
             var p = go.AddComponent<RenderProbe>();
             RenderPipelineManager.endFrameRendering += (ctx, cams) => { s_Frames++; s_Cameras += cams.Length; };
-            SceneManager.sceneLoaded += (s, mode) => { p.m_Scene = s.name; p.m_SceneStart = Time.realtimeSinceStartup; p.Invoke(nameof(Describe), 1f); };
+            SceneManager.sceneLoaded += (s, mode) =>
+            {
+                p.m_Scene = s.name; p.m_SceneStart = Time.realtimeSinceStartup; p.Invoke(nameof(Describe), 1f);
+                p.StartCoroutine(p.SamplePixels(s.name));
+            };
+        }
+
+        // What actually reaches the screen: average / brightest pixel of the final frame, 3 s and 10 s into the scene.
+        System.Collections.IEnumerator SamplePixels(string scene)
+        {
+            foreach (float wait in new[] { 3f, 7f })
+            {
+                yield return new WaitForSecondsRealtime(wait);
+                yield return new WaitForEndOfFrame();
+                Texture2D tex = null;
+                try
+                {
+                    tex = ScreenCapture.CaptureScreenshotAsTexture();
+                    var px = tex.GetPixels32();
+                    long r = 0, g = 0, b = 0; int max = 0, lit = 0, n = 0;
+                    for (int i = 0; i < px.Length; i += 97, n++)
+                    {
+                        var c = px[i];
+                        r += c.r; g += c.g; b += c.b;
+                        int m = Math.Max(c.r, Math.Max(c.g, c.b));
+                        if (m > max) max = m;
+                        if (m > 8) lit++;
+                    }
+                    Log.Info($"[render] pixels '{scene}' {tex.width}x{tex.height}: avg=({r / n},{g / n},{b / n}) max={max} lit={lit}/{n} pipelineFrames={s_Frames}");
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("[render] pixel sample failed: " + e.Message);
+                }
+                if (tex) Destroy(tex);
+            }
         }
 
         void Describe()
