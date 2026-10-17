@@ -3,6 +3,7 @@ using GameNetcodeStuff;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using TouchPhase = UnityEngine.TouchPhase;
 
 namespace LCIOS
 {
