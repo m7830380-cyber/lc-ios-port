@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
 
 namespace LCIOS
@@ -28,6 +30,7 @@ namespace LCIOS
                     GC.Collect();
                 };
                 SceneManager.sceneLoaded += (s, mode) => Log.Info($"scene loaded: '{s.name}' ({mode}) roots={s.rootCount}");
+                HalfResolution();
                 TouchProbe.Install();
                 RenderProbe.Install();
             }
@@ -35,6 +38,23 @@ namespace LCIOS
             {
                 Log.Error("bootstrap failed: " + e);
             }
+        }
+
+        // Render at half resolution so the HDRP buffers fit under the iOS memory limit.
+        static void HalfResolution()
+        {
+            var asset = GraphicsSettings.currentRenderPipeline as HDRenderPipelineAsset;
+            if (asset == null)
+            {
+                Log.Warn("render scale: no HDRP asset, left at full resolution");
+                return;
+            }
+            var settings = asset.currentPlatformRenderPipelineSettings;
+            settings.dynamicResolutionSettings.enabled = true;
+            settings.dynamicResolutionSettings.forceResolution = true;
+            settings.dynamicResolutionSettings.forcedPercentage = 50f;
+            asset.currentPlatformRenderPipelineSettings = settings;
+            Log.Info("render scale forced to 50%");
         }
     }
 }
