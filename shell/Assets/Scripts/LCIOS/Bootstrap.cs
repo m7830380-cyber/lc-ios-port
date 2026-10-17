@@ -20,7 +20,13 @@ namespace LCIOS
                 Input.simulateMouseWithTouches = false;
                 Input.multiTouchEnabled = true;
                 Screen.sleepTimeout = SleepTimeout.NeverSleep;
-                Application.lowMemory += () => Log.Warn("low memory warning");
+                Application.lowMemory += () =>
+                {
+                    Log.Warn("low memory warning");
+                    // Free unreferenced assets and managed heap before iOS kills the app for memory.
+                    Resources.UnloadUnusedAssets();
+                    GC.Collect();
+                };
                 SceneManager.sceneLoaded += (s, mode) => Log.Info($"scene loaded: '{s.name}' ({mode}) roots={s.rootCount}");
                 TouchProbe.Install();
                 RenderProbe.Install();
