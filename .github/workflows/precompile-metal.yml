@@ -1,0 +1,52 @@
+name: Precompile Metal shaders
+
+# Compiles the game's Metal programs (lcmetal.pack, release metal-src of the PRIVATE repo, made by
+# tools/extract_metal.py) to metallibs, so the phone loads them instead of compiling HDRP's huge programs from
+# source while the game waits. Everything game-derived stays in the PRIVATE repo's releases; logs show counts only.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PRIVATE_REPO: m7830380-cyber/lc-ios-private
+  SHARDS: 5
+
+jobs:
+  compile:
+    runs-on: macos-14
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      - name: Get sources
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: gh release download metal-src --pattern lcmetal.pack --dir src --repo "$PRIVATE_REPO"
+      - name: Compile
+        run: python3 ci/precompile_metal.py compile src/lcmetal.pack ${{ matrix.shard }} $SHARDS part${{ matrix.shard }}.bin
+      - name: Upload shard (private repo)
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: gh release upload metal-bin part${{ matrix.shard }}.bin --clobber --repo "$PRIVATE_REPO"
+
+  merge:
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Merge shards
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release download metal-bin --pattern 'part*.bin' --dir parts --repo "$PRIVATE_REPO"
+          python3 ci/precompile_metal.py merge lcmetallib.pack parts/part*.bin
+          gh release upload metal-bin lcmetallib.pack --clobber --repo "$PRIVATE_REPO"
