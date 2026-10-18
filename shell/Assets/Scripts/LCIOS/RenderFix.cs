@@ -41,7 +41,9 @@ namespace LCIOS
 
         const float LitNeeded = 0.25f;   // share of pixels that must be visibly lit for the view to count as working
 
-        static readonly List<Group> s_Applied = new List<Group>();
+        // Found on the phone (2026-10-18): the compute light loop renders black. Start with it off, and keep the
+        // player view out of dynamic resolution (its render texture is only 860x520; scaling it showed a small square).
+        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4] };
         static bool s_Searched;
         Texture2D m_Tex;
 
@@ -53,7 +55,7 @@ namespace LCIOS
             SceneManager.sceneLoaded += (s, mode) => f.StartCoroutine(f.Check(s.name));
         }
 
-        void Start() { InvokeRepeating(nameof(ApplyToAll), 2f, 2f); }
+        void Start() { InvokeRepeating(nameof(ApplyToAll), 0.5f, 1f); }
 
         // Keep the chosen settings on cameras that appear later (spectating, new scenes).
         void ApplyToAll()
@@ -191,13 +193,19 @@ namespace LCIOS
                 m_Tex.Apply(false);
                 var px = m_Tex.GetPixels32();
                 long r = 0, g = 0, b = 0; int lit = 0;
-                foreach (var c in px)
+                var quad = new int[4];   // lit pixels per quarter: bottom-left, bottom-right, top-left, top-right
+                for (int i = 0; i < px.Length; i++)
                 {
+                    var c = px[i];
                     r += c.r; g += c.g; b += c.b;
-                    if (Math.Max(c.r, Math.Max(c.g, c.b)) > 8) lit++;
+                    if (Math.Max(c.r, Math.Max(c.g, c.b)) > 8)
+                    {
+                        lit++;
+                        quad[(i % w >= w / 2 ? 1 : 0) + (i / w >= h / 2 ? 2 : 0)]++;
+                    }
                 }
-                int n = px.Length;
-                stats = $"avg=({r / n},{g / n},{b / n}) lit={lit * 100 / n}% ({rt.width}x{rt.height} {rt.format})";
+                int n = px.Length, q = n / 4;
+                stats = $"avg=({r / n},{g / n},{b / n}) lit={lit * 100 / n}% quarters BL/BR/TL/TR={quad[0] * 100 / q}/{quad[1] * 100 / q}/{quad[2] * 100 / q}/{quad[3] * 100 / q}% ({rt.width}x{rt.height} {rt.format})";
                 return (float)lit / n;
             }
             catch (Exception e)

@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.EnhancedTouch;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 using UnityEngine.SceneManagement;
 
 namespace LCIOS
@@ -40,11 +43,11 @@ namespace LCIOS
             if (m_Failed || m_Logged >= MaxTouchesPerScene) return;
             try
             {
-                for (int i = 0; i < Input.touchCount; i++)
+                if (!EnhancedTouchSupport.enabled) EnhancedTouchSupport.Enable();
+                foreach (var t in Touch.activeTouches)
                 {
-                    var t = Input.GetTouch(i);
                     if (t.phase != TouchPhase.Began) continue;
-                    Log.Info($"[touch] began at {t.position} -> {UiUnder(t.position)}");
+                    Log.Info($"[touch] began at {t.screenPosition} -> {UiUnder(t.screenPosition)}");
                     if (++m_Logged >= MaxTouchesPerScene) Log.Info("[touch] limit reached for this scene");
                 }
             }

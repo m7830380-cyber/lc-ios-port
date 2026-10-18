@@ -2,8 +2,10 @@ using System.Collections.Generic;
 using GameNetcodeStuff;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.InputSystem.LowLevel;
-using TouchPhase = UnityEngine.TouchPhase;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 namespace LCIOS
 {
@@ -65,6 +67,8 @@ namespace LCIOS
         {
             m_Pad = InputSystem.AddDevice<Gamepad>("LCIOS Touch Gamepad");
             m_Mouse = InputSystem.AddDevice<Mouse>("LCIOS Touch Look");
+            // The old Input.touches API gets nothing on iOS here (the new Input System owns the touchscreen), so read it there.
+            EnhancedTouchSupport.Enable();
             m_Circle = MakeCircle(128);
             Log.Info("[controls] virtual gamepad and mouse added");
         }
@@ -93,15 +97,14 @@ namespace LCIOS
                 if (!m_Visible) return;
                 Layout();
                 Vector2 look = Vector2.zero;
-                for (int i = 0; i < Input.touchCount; i++)
+                foreach (var t in Touch.activeTouches)
                 {
-                    var t = Input.GetTouch(i);
                     switch (t.phase)
                     {
                         case TouchPhase.Began: Begin(t); break;
                         case TouchPhase.Moved:
                         case TouchPhase.Stationary: look += Move(t); break;
-                        default: End(t.fingerId); break;
+                        default: End(t.touchId); break;
                     }
                 }
                 Send(look);
@@ -140,34 +143,37 @@ namespace LCIOS
 
         void Begin(Touch t)
         {
-            int bi = ButtonAt(t.position);
-            var f = new Finger { Start = t.position, Last = t.position, Button = bi };
+            var pos = t.screenPosition;
+            int bi = ButtonAt(pos);
+            var f = new Finger { Start = pos, Last = pos, Button = bi };
             if (bi >= 0)
             {
                 f.Role = Role.Button;
                 var b = m_Buttons[bi];
                 b.Down = b.Toggle ? !b.Down : true;
             }
-            else if (t.position.x < UnityEngine.Screen.width * 0.42f)
+            else if (pos.x < UnityEngine.Screen.width * 0.42f)
             {
                 f.Role = Role.Stick;
-                m_StickCentre = t.position;
+                m_StickCentre = pos;
                 m_Stick = Vector2.zero;
             }
             else f.Role = Role.Look;
-            m_Fingers[t.fingerId] = f;
+            m_Fingers[t.touchId] = f;
+            Log.Info($"[controls] touch {f.Role}{(bi >= 0 ? " " + m_Buttons[bi].Label : "")} at {pos}");
         }
 
         Vector2 Move(Touch t)
         {
-            if (!m_Fingers.TryGetValue(t.fingerId, out var f)) { Begin(t); return Vector2.zero; }
+            if (!m_Fingers.TryGetValue(t.touchId, out var f)) { Begin(t); return Vector2.zero; }
+            var pos = t.screenPosition;
             Vector2 look = Vector2.zero;
             if (f.Role == Role.Stick)
-                m_Stick = Vector2.ClampMagnitude((t.position - m_StickCentre) / (1.2f * m_Unit), 1f);
+                m_Stick = Vector2.ClampMagnitude((pos - m_StickCentre) / (1.2f * m_Unit), 1f);
             else if (f.Role == Role.Look)
-                look = (t.position - f.Last) * LookScale;
-            f.Last = t.position;
-            m_Fingers[t.fingerId] = f;
+                look = (pos - f.Last) * LookScale;
+            f.Last = pos;
+            m_Fingers[t.touchId] = f;
             return look;
         }
 
