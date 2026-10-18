@@ -51,8 +51,14 @@ namespace LCIOS
         static readonly List<Group> s_ScreenGroups = new List<Group> { Groups[4], Groups[14], Groups[15] };
         // The ship monitors (map, security, head cam) are tiny pictures: shadows, fog and the like don't show on them.
         static readonly List<Group> s_MonitorGroups = new List<Group> { Groups[0], Groups[4], Groups[14], Groups[15] };
+        // Measured on the phone (shader bench 2026-10-18, ship): the player view costs the GPU 39 ms per frame with
+        // deferred lighting (its tile/compute path is off, see above, so every pixel goes through every light) and 11 ms
+        // forward. Forward is used on every 3D camera unless it changes the picture of the scene (checked on each load).
+        static readonly List<Group> s_Forward = new List<Group> { Groups[13] };
+        static bool s_UseForward = true;
         static bool s_Searched;
         Texture2D m_Tex;
+        float m_Avg;   // average brightness of the last Sample
 
         public static void Install()
         {
@@ -69,7 +75,10 @@ namespace LCIOS
         {
             if (s_Applied.Count == 0) return;
             foreach (var c in Camera.allCameras)
+            {
                 Apply(c, c.targetTexture == null ? s_ScreenGroups : c.name == "MainCamera" ? s_Applied : s_MonitorGroups);
+                if (s_UseForward && c.targetTexture != null) Apply(c, s_Forward);
+            }
         }
 
         static Camera PlayerCamera()
@@ -92,6 +101,19 @@ namespace LCIOS
             ApplyToAll();
             yield return Settle();
             float lit = Sample(cam, out string stats);
+            if (s_UseForward && lit >= LitNeeded)
+            {
+                // Same view with deferred lighting, to compare.
+                float fwdLit = lit, fwdAvg = m_Avg;
+                string fwdStats = stats;
+                SetForward(false);
+                yield return Settle();
+                if (cam == null) yield break;
+                float defLit = Sample(cam, out string defStats), defAvg = m_Avg;
+                bool same = fwdLit >= defLit * 0.7f && fwdAvg >= defAvg * 0.6f && fwdAvg <= defAvg * 1.6f + 10;
+                Log.Info($"[renderfix] '{scene}' forward {fwdStats} | deferred {defStats} -> {(same ? "forward" : "deferred (forward looked different)")}");
+                if (same) { SetForward(true); yield return Settle(); if (cam == null) yield break; lit = Sample(cam, out stats); }
+            }
             Log.Info($"[renderfix] '{scene}' camera '{cam.name}' output {stats}");
             if (lit >= LitNeeded || s_Searched) yield break;
             s_Searched = true;
@@ -141,6 +163,13 @@ namespace LCIOS
             var names = new List<string>();
             foreach (var g in tried) names.Add(g.Name);
             Log.Info("[renderfix] fixed with: " + string.Join(", ", names));
+        }
+
+        void SetForward(bool on)
+        {
+            s_UseForward = on;
+            foreach (var c in Camera.allCameras) if (c.targetTexture != null) Reset(c);
+            ApplyToAll();
         }
 
         static IEnumerator Settle()
@@ -212,6 +241,7 @@ namespace LCIOS
                     }
                 }
                 int n = px.Length, q = n / 4;
+                m_Avg = (r + g + b) / (3f * n);
                 stats = $"avg=({r / n},{g / n},{b / n}) lit={lit * 100 / n}% quarters BL/BR/TL/TR={quad[0] * 100 / q}/{quad[1] * 100 / q}/{quad[2] * 100 / q}/{quad[3] * 100 / q}% ({rt.width}x{rt.height} {rt.format})";
                 return (float)lit / n;
             }
