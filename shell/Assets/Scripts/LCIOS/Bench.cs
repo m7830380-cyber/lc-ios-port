@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
@@ -18,24 +20,32 @@ namespace LCIOS
         class Config
         {
             public string Name;
-            public string[] Off = new string[0];   // FrameSettingsField names off on the player camera
-            public bool NoScreenCamera, HalfView;
+            public string[] Off = new string[0];       // FrameSettingsField names off on every camera
+            public string[] CamerasOff = new string[0]; // cameras disabled by name ("screen" = the one drawing to the screen)
         }
 
+        static readonly string[] Extras = { "MapCamera", "SecurityCamera", "HeadMountedCamera" };
+        static readonly string[] ShadowsFog = { "ShadowMaps", "Shadowmask", "Volumetrics", "ReprojectionForVolumetrics" };
+
+        // The first bench (2026-10-18) showed the player camera's own features cost little (8.2 -> 9.8 fps with all off),
+        // so this one looks at the other cameras and the per-camera cost.
         static readonly Config[] Configs =
         {
             new Config { Name = "baseline" },
-            new Config { Name = "no shadows", Off = new[] { "ShadowMaps", "Shadowmask" } },
-            new Config { Name = "no fog", Off = new[] { "Volumetrics", "ReprojectionForVolumetrics" } },
-            new Config { Name = "no post/custom pass", Off = new[] { "Postprocess", "CustomPostProcess", "CustomPass" } },
-            new Config { Name = "no screen camera", NoScreenCamera = true },
-            new Config { Name = "half view resolution", HalfView = true },
-            new Config { Name = "no shadows+fog", Off = new[] { "ShadowMaps", "Shadowmask", "Volumetrics", "ReprojectionForVolumetrics" } },
-            new Config { Name = "all of the above", Off = new[] { "ShadowMaps", "Shadowmask", "Volumetrics", "ReprojectionForVolumetrics", "Postprocess", "CustomPostProcess", "CustomPass" }, NoScreenCamera = true, HalfView = true },
+            new Config { Name = "no map camera", CamerasOff = new[] { "MapCamera" } },
+            new Config { Name = "no security camera", CamerasOff = new[] { "SecurityCamera" } },
+            new Config { Name = "no head camera", CamerasOff = new[] { "HeadMountedCamera" } },
+            new Config { Name = "no extra cameras", CamerasOff = Extras },
+            new Config { Name = "shadows+fog off on every camera", Off = ShadowsFog },
+            new Config { Name = "no player camera", CamerasOff = new[] { "MainCamera" } },
+            new Config { Name = "only screen camera", CamerasOff = new[] { "MainCamera", "MapCamera", "SecurityCamera", "HeadMountedCamera" } },
+            new Config { Name = "no cameras at all", CamerasOff = new[] { "MainCamera", "MapCamera", "SecurityCamera", "HeadMountedCamera", "screen" } },
             new Config { Name = "baseline again" },
         };
 
         static bool s_Done;
+
+        [DllImport("__Internal")] static extern double LCGpuBusyMs();
 
         public static void Install()
         {
@@ -54,31 +64,30 @@ namespace LCIOS
             Log.Info("[bench] start: " + Describe());
             foreach (var c in Configs)
             {
-                Camera player = PlayerCamera();
-                if (player == null) { Log.Warn("[bench] no player camera"); yield break; }
-                var hd = player.GetComponent<HDAdditionalCameraData>();
-                Camera screen = null;
-                foreach (var cam in Camera.allCameras) if (cam.targetTexture == null) { screen = cam; break; }
-                var rt = player.targetTexture;
-                int w = rt.width, h = rt.height;
-
-                if (hd != null) Set(hd, c.Off, false, true);
-                if (c.NoScreenCamera && screen != null) screen.enabled = false;
-                if (c.HalfView) Resize(rt, w / 2, h / 2);
+                var disabled = new List<Camera>();
+                var changed = new List<HDAdditionalCameraData>();
+                foreach (var cam in Camera.allCameras)
+                {
+                    string name = cam.targetTexture == null ? "screen" : cam.name;
+                    if (Array.IndexOf(c.CamerasOff, name) >= 0) { cam.enabled = false; disabled.Add(cam); continue; }
+                    var hd = cam.GetComponent<HDAdditionalCameraData>();
+                    if (hd != null && c.Off.Length > 0) { Set(hd, c.Off, false, true); changed.Add(hd); }
+                }
 
                 yield return new WaitForSecondsRealtime(Hold - Measure);
                 int frames = 0; float t = 0, worst = 0;
+                double gpu0 = LCGpuBusyMs();
                 while (t < Measure)
                 {
                     yield return null;
                     float dt = Time.unscaledDeltaTime;
                     t += dt; frames++; if (dt > worst) worst = dt;
                 }
-                Log.Info($"[bench] {c.Name}: fps={frames / t:0.0} worst={worst * 1000:0}ms");
+                double gpu = (LCGpuBusyMs() - gpu0) / frames;
+                Log.Info($"[bench] {c.Name}: fps={frames / t:0.0} worst={worst * 1000:0}ms gpu={gpu:0.0}ms/frame");
 
-                if (hd != null) Set(hd, c.Off, true, false);
-                if (screen != null) screen.enabled = true;
-                if (c.HalfView) Resize(rt, w, h);
+                foreach (var cam in disabled) if (cam != null) cam.enabled = true;
+                foreach (var hd in changed) if (hd != null) Set(hd, c.Off, true, false);
             }
             Log.Info("[bench] done");
         }
@@ -94,26 +103,6 @@ namespace LCIOS
             }
         }
 
-        static void Resize(RenderTexture rt, int w, int h)
-        {
-            rt.Release();
-            rt.width = w;
-            rt.height = h;
-            rt.Create();
-        }
-
-        static Camera PlayerCamera()
-        {
-            Camera best = null;
-            foreach (var c in Camera.allCameras)
-            {
-                if (c.targetTexture == null) continue;
-                if (c.name == "MainCamera") return c;
-                if (best == null || c.targetTexture.width > best.targetTexture.width) best = c;
-            }
-            return best;
-        }
-
         // Cameras and lights in the scene, to read the numbers against.
         static string Describe()
         {
@@ -121,7 +110,7 @@ namespace LCIOS
             foreach (var c in Camera.allCameras)
                 sb.Append($"camera '{c.name}' depth={c.depth} far={c.farClipPlane:0} target={(c.targetTexture ? $"{c.targetTexture.width}x{c.targetTexture.height} {c.targetTexture.format}" : "screen")}; ");
             int lights = 0, shadowed = 0, point = 0;
-            var res = new System.Collections.Generic.Dictionary<string, int>();
+            var res = new Dictionary<string, int>();
             foreach (var l in FindObjectsOfType<HDAdditionalLightData>())
             {
                 var light = l.GetComponent<Light>();
