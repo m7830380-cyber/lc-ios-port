@@ -39,6 +39,7 @@ namespace LCIOS
                 TouchControls.Install();
                 UiScale.Install();
                 Perf.Install();
+                Bench.Install();
             }
             catch (Exception e)
             {

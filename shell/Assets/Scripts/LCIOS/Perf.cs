@@ -63,10 +63,10 @@ namespace LCIOS
             m_Frames = 0; m_Since = 0; m_Worst = 0;
         }
 
-        // Volumetric fog at the low quality tier, shadows from lamps at the low resolution tier.
+        // Volumetric fog at the low quality tier.
         void Trim()
         {
-            int fogs = 0, lights = 0;
+            int fogs = 0;
             foreach (var v in FindObjectsOfType<Volume>())
             {
                 var profile = v.sharedProfile;
@@ -78,16 +78,7 @@ namespace LCIOS
                 fogs++;
                 Log.Info($"[perf] fog '{v.name}' quality level={level} custom={custom} budget={fog.volumetricFogBudget} -> low");
             }
-            foreach (var l in FindObjectsOfType<HDAdditionalLightData>())
-            {
-                if (l.type == HDLightType.Directional) continue;
-                var (level, custom) = (l.shadowResolution.level, l.shadowResolution.useOverride);
-                if (level == 0 && !custom) continue;
-                l.SetShadowResolutionLevel(0);
-                l.SetShadowResolutionOverride(false);
-                lights++;
-            }
-            if (fogs + lights > 0) Log.Info($"[perf] trimmed: {fogs} fog volume(s), {lights} shadowed light(s) to low tier");
+            if (fogs > 0) Log.Info($"[perf] trimmed: {fogs} fog volume(s) to low tier");
         }
     }
 }
