@@ -67,7 +67,7 @@ namespace LCIOS
             {
                 m_Off.Clear();
                 var changed = new List<HDAdditionalCameraData>();
-                foreach (var cam in Camera.allCameras)
+                foreach (var cam in FindObjectsOfType<Camera>())   // also the ones the game has switched off this frame
                 {
                     string name = cam.targetTexture == null ? "screen" : cam.name;
                     if (Array.IndexOf(c.CamerasOff, name) >= 0) { m_Off.Add(cam); continue; }
