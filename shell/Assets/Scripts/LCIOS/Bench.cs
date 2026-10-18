@@ -44,6 +44,7 @@ namespace LCIOS
         };
 
         static bool s_Done;
+        readonly List<Camera> m_Off = new List<Camera>();
 
         [DllImport("__Internal")] static extern double LCGpuBusyMs();
 
@@ -64,12 +65,12 @@ namespace LCIOS
             Log.Info("[bench] start: " + Describe());
             foreach (var c in Configs)
             {
-                var disabled = new List<Camera>();
+                m_Off.Clear();
                 var changed = new List<HDAdditionalCameraData>();
                 foreach (var cam in Camera.allCameras)
                 {
                     string name = cam.targetTexture == null ? "screen" : cam.name;
-                    if (Array.IndexOf(c.CamerasOff, name) >= 0) { cam.enabled = false; disabled.Add(cam); continue; }
+                    if (Array.IndexOf(c.CamerasOff, name) >= 0) { m_Off.Add(cam); continue; }
                     var hd = cam.GetComponent<HDAdditionalCameraData>();
                     if (hd != null && c.Off.Length > 0) { Set(hd, c.Off, false, true); changed.Add(hd); }
                 }
@@ -86,10 +87,18 @@ namespace LCIOS
                 double gpu = (LCGpuBusyMs() - gpu0) / frames;
                 Log.Info($"[bench] {c.Name}: fps={frames / t:0.0} worst={worst * 1000:0}ms gpu={gpu:0.0}ms/frame");
 
-                foreach (var cam in disabled) if (cam != null) cam.enabled = true;
+                foreach (var cam in m_Off) if (cam != null) cam.enabled = true;
+                m_Off.Clear();
                 foreach (var hd in changed) if (hd != null) Set(hd, c.Off, true, false);
             }
             Log.Info("[bench] done");
+        }
+
+        // The game's ManualCameraRenderer switches the map/head/security cameras back on in its Update, so hold them off
+        // here every frame, after all Updates and before rendering.
+        void LateUpdate()
+        {
+            foreach (var cam in m_Off) if (cam != null) cam.enabled = false;
         }
 
         static void Set(HDAdditionalCameraData hd, string[] fields, bool on, bool overridden)
