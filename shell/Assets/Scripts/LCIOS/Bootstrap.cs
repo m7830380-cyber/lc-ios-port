@@ -40,7 +40,6 @@ namespace LCIOS
                 UiScale.Install();
                 Perf.Install();
                 CameraBudget.Install();
-                ShaderBench.Install();
             }
             catch (Exception e)
             {

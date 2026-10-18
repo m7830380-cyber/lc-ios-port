@@ -47,18 +47,17 @@ namespace LCIOS
 
         // Found on the phone (2026-10-18): the compute light loop renders black. Start with it off, and keep the
         // player view out of dynamic resolution (its render texture is only 860x520; scaling it showed a small square).
-        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[15] };
+        // Shadows too, for frame rate: they cost the player view 7.5 of its 39 ms GPU per frame (shader bench, ship).
+        // (Forward lighting would cost 11 ms but renders black after the shader conversion, like the compute light loop.)
+        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[9], Groups[15] };
+        // The player view renders into a fixed 860x520 texture shown on the HUD canvas; drawing it at 3/4 of that is
+        // about half the pixels for the GPU, slightly blurrier.
+        const float PlayerViewScale = 0.75f;
         static readonly List<Group> s_ScreenGroups = new List<Group> { Groups[4], Groups[14], Groups[15] };
         // The ship monitors (map, security, head cam) are tiny pictures: shadows, fog and the like don't show on them.
         static readonly List<Group> s_MonitorGroups = new List<Group> { Groups[0], Groups[4], Groups[14], Groups[15] };
-        // Measured on the phone (shader bench 2026-10-18, ship): the player view costs the GPU 39 ms per frame with
-        // deferred lighting (its tile/compute path is off, see above, so every pixel goes through every light) and 11 ms
-        // forward. Forward is used on every 3D camera unless it changes the picture of the scene (checked on each load).
-        static readonly List<Group> s_Forward = new List<Group> { Groups[13] };
-        static bool s_UseForward = true;
         static bool s_Searched;
         Texture2D m_Tex;
-        float m_Avg;   // average brightness of the last Sample
 
         public static void Install()
         {
@@ -75,10 +74,7 @@ namespace LCIOS
         {
             if (s_Applied.Count == 0) return;
             foreach (var c in Camera.allCameras)
-            {
                 Apply(c, c.targetTexture == null ? s_ScreenGroups : c.name == "MainCamera" ? s_Applied : s_MonitorGroups);
-                if (s_UseForward && c.targetTexture != null) Apply(c, s_Forward);
-            }
         }
 
         static Camera PlayerCamera()
@@ -98,23 +94,21 @@ namespace LCIOS
             yield return new WaitForSecondsRealtime(4f);
             var cam = PlayerCamera();
             if (cam == null) yield break;
+            Shrink(cam);
             ApplyToAll();
             yield return Settle();
             float lit = Sample(cam, out string stats);
-            if (s_UseForward && lit >= LitNeeded)
+            Log.Info($"[renderfix] '{scene}' camera '{cam.name}' output {stats}");
+            if (lit < LitNeeded && cam.targetTexture != null && cam.targetTexture.width != 860)
             {
-                // Same view with deferred lighting, to compare.
-                float fwdLit = lit, fwdAvg = m_Avg;
-                string fwdStats = stats;
-                SetForward(false);
+                // The smaller player view is the newest change: put it back before searching for anything else.
+                var rt = cam.targetTexture;
+                rt.Release(); rt.width = 860; rt.height = 520; rt.Create();
                 yield return Settle();
                 if (cam == null) yield break;
-                float defLit = Sample(cam, out string defStats), defAvg = m_Avg;
-                bool same = fwdLit >= defLit * 0.7f && fwdAvg >= defAvg * 0.6f && fwdAvg <= defAvg * 1.6f + 10;
-                Log.Info($"[renderfix] '{scene}' forward {fwdStats} | deferred {defStats} -> {(same ? "forward" : "deferred (forward looked different)")}");
-                if (same) { SetForward(true); yield return Settle(); if (cam == null) yield break; lit = Sample(cam, out stats); }
+                lit = Sample(cam, out stats);
+                Log.Info($"[renderfix] back to 860x520: {stats}");
             }
-            Log.Info($"[renderfix] '{scene}' camera '{cam.name}' output {stats}");
             if (lit >= LitNeeded || s_Searched) yield break;
             s_Searched = true;
             yield return Search(cam);
@@ -165,11 +159,16 @@ namespace LCIOS
             Log.Info("[renderfix] fixed with: " + string.Join(", ", names));
         }
 
-        void SetForward(bool on)
+        static void Shrink(Camera cam)
         {
-            s_UseForward = on;
-            foreach (var c in Camera.allCameras) if (c.targetTexture != null) Reset(c);
-            ApplyToAll();
+            var rt = cam.targetTexture;
+            if (cam.name != "MainCamera" || rt == null || rt.width != 860) return;
+            int w = Mathf.RoundToInt(rt.width * PlayerViewScale), h = Mathf.RoundToInt(rt.height * PlayerViewScale);
+            Log.Info($"[renderfix] player view {rt.width}x{rt.height} -> {w}x{h}");
+            rt.Release();
+            rt.width = w;
+            rt.height = h;
+            rt.Create();
         }
 
         static IEnumerator Settle()
@@ -241,7 +240,6 @@ namespace LCIOS
                     }
                 }
                 int n = px.Length, q = n / 4;
-                m_Avg = (r + g + b) / (3f * n);
                 stats = $"avg=({r / n},{g / n},{b / n}) lit={lit * 100 / n}% quarters BL/BR/TL/TR={quad[0] * 100 / q}/{quad[1] * 100 / q}/{quad[2] * 100 / q}/{quad[3] * 100 / q}% ({rt.width}x{rt.height} {rt.format})";
                 return (float)lit / n;
             }
