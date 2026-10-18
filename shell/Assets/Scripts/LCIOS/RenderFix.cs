@@ -37,13 +37,15 @@ namespace LCIOS
             new Group { Name = "sss/decals/layers", Off = new[] { "SubsurfaceScattering", "Transmission", "Decals", "DecalLayers", "LightLayers" } },
             new Group { Name = "async compute", Off = new[] { "AsyncCompute", "LightListAsync", "SSRAsync", "SSAOAsync", "ContactShadowsAsync", "VolumeVoxelizationsAsync" } },
             new Group { Name = "forward rendering", Off = new[] { "LitShaderMode" } },
+            // Not a fix: costly effects that barely show in this game, kept off for frame rate.
+            new Group { Name = "subtle effects", Off = new[] { "SSR", "TransparentSSR", "SSGI", "ContactShadows", "ScreenSpaceShadows", "SubsurfaceScattering", "Transmission", "MSAA" } },
         };
 
         const float LitNeeded = 0.25f;   // share of pixels that must be visibly lit for the view to count as working
 
         // Found on the phone (2026-10-18): the compute light loop renders black. Start with it off, and keep the
         // player view out of dynamic resolution (its render texture is only 860x520; scaling it showed a small square).
-        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4] };
+        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[14] };
         static bool s_Searched;
         Texture2D m_Tex;
 

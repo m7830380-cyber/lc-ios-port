@@ -68,6 +68,7 @@ public static class IosShellBuild
         // HDRP references the Virtual Texturing module; without this the iOS player does not link its native code.
         SetVirtualTexturing(true);
         PlayerSettings.MTRendering = true;
+        PlayerSettings.enableFrameTimingStats = true;   // CPU/GPU frame times in the [perf] log
         PlayerSettings.iOS.targetOSVersionString = "15.0";
         PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
         PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;

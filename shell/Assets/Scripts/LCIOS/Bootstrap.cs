@@ -39,6 +39,7 @@ namespace LCIOS
                 RenderFix.Install();
                 TouchControls.Install();
                 UiScale.Install();
+                Perf.Install();
             }
             catch (Exception e)
             {
