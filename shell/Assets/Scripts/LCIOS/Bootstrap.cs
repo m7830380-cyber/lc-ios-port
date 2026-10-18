@@ -40,6 +40,8 @@ namespace LCIOS
                 UiScale.Install();
                 Perf.Install();
                 CameraBudget.Install();
+                FloorFix.Install();
+                LanJoin.Install();
             }
             catch (Exception e)
             {
