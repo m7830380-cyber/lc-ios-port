@@ -29,6 +29,8 @@ namespace LCIOS
         float m_Since;
 
         static CameraBudget s_Instance;
+        // Set while ShaderBench measures the player view alone: no monitor camera renders.
+        public static bool HoldAll;
         static readonly ShaderTagId[] UiPasses = { new ShaderTagId("SRPDefaultUnlit"), new ShaderTagId("ForwardOnly"), new ShaderTagId("Forward") };
         HDAdditionalCameraData m_UiCamera;
 
@@ -69,7 +71,7 @@ namespace LCIOS
                     if (hd != null) hd.hasPersistentHistory = true;
                 }
                 float wait = (now - last) / interval;   // >= 1: due
-                if (wait >= 1 && (pick == null || wait > pickWait)) { pick = cam; pickWait = wait; }
+                if (!HoldAll && wait >= 1 && (pick == null || wait > pickWait)) { pick = cam; pickWait = wait; }
                 m_Held.Add(cam);
             }
             if (pick != null)
