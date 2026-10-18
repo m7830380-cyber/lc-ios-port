@@ -49,6 +49,8 @@ namespace LCIOS
         // player view out of dynamic resolution (its render texture is only 860x520; scaling it showed a small square).
         static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[15] };
         static readonly List<Group> s_ScreenGroups = new List<Group> { Groups[4], Groups[14], Groups[15] };
+        // The ship monitors (map, security, head cam) are tiny pictures: shadows, fog and the like don't show on them.
+        static readonly List<Group> s_MonitorGroups = new List<Group> { Groups[0], Groups[4], Groups[14], Groups[15] };
         static bool s_Searched;
         Texture2D m_Tex;
 
@@ -67,7 +69,7 @@ namespace LCIOS
         {
             if (s_Applied.Count == 0) return;
             foreach (var c in Camera.allCameras)
-                Apply(c, c.targetTexture != null ? s_Applied : s_ScreenGroups);
+                Apply(c, c.targetTexture == null ? s_ScreenGroups : c.name == "MainCamera" ? s_Applied : s_MonitorGroups);
         }
 
         static Camera PlayerCamera()

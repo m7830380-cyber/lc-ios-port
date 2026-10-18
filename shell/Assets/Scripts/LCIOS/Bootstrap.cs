@@ -39,7 +39,7 @@ namespace LCIOS
                 TouchControls.Install();
                 UiScale.Install();
                 Perf.Install();
-                Bench.Install();
+                CameraBudget.Install();
             }
             catch (Exception e)
             {
