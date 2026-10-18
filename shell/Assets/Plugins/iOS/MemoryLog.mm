@@ -29,8 +29,10 @@ static void LCMemoryFootprint(const char *tag)
     task_vm_info_data_t info;
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count) != KERN_SUCCESS) return;
-    NSLog(@"[mem] %s footprint=%llu MB limit_left=%llu MB",
-          tag, (unsigned long long)(info.phys_footprint >> 20), (unsigned long long)LCMemoryLeftMB());
+    // thermal: 0 nominal, 1 fair, 2 serious, 3 critical (iOS slows the chip from "serious" on)
+    NSLog(@"[mem] %s footprint=%llu MB limit_left=%llu MB thermal=%ld",
+          tag, (unsigned long long)(info.phys_footprint >> 20), (unsigned long long)LCMemoryLeftMB(),
+          (long)[NSProcessInfo processInfo].thermalState);
 }
 
 // Returns 0 on success, else errno.

@@ -38,6 +38,8 @@ namespace LCIOS
             new Group { Name = "async compute", Off = new[] { "AsyncCompute", "LightListAsync", "SSRAsync", "SSAOAsync", "ContactShadowsAsync", "VolumeVoxelizationsAsync" } },
             new Group { Name = "forward rendering", Off = new[] { "LitShaderMode" } },
             // Not a fix: costly effects that barely show in this game, kept off for frame rate.
+            // Only for the full-screen camera that draws the HUD/menus (it renders no 3D world, just the canvas).
+            new Group { Name = "screen camera extras", Off = new[] { "Volumetrics", "ReprojectionForVolumetrics", "AtmosphericScattering", "ShadowMaps", "Shadowmask", "SSAO", "Decals", "DecalLayers", "LightLayers", "ReflectionProbe", "PlanarProbe", "SkyReflection", "MotionVectors", "ObjectMotionVectors", "TransparentsWriteMotionVector", "Refraction", "Distortion", "LowResTransparent", "TransparentPrepass", "TransparentPostpass" } },
             new Group { Name = "subtle effects", Off = new[] { "SSR", "TransparentSSR", "SSGI", "ContactShadows", "ScreenSpaceShadows", "SubsurfaceScattering", "Transmission", "MSAA" } },
         };
 
@@ -45,7 +47,8 @@ namespace LCIOS
 
         // Found on the phone (2026-10-18): the compute light loop renders black. Start with it off, and keep the
         // player view out of dynamic resolution (its render texture is only 860x520; scaling it showed a small square).
-        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[14] };
+        static readonly List<Group> s_Applied = new List<Group> { Groups[0], Groups[4], Groups[15] };
+        static readonly List<Group> s_ScreenGroups = new List<Group> { Groups[4], Groups[14], Groups[15] };
         static bool s_Searched;
         Texture2D m_Tex;
 
@@ -64,7 +67,7 @@ namespace LCIOS
         {
             if (s_Applied.Count == 0) return;
             foreach (var c in Camera.allCameras)
-                if (c.targetTexture != null) Apply(c, s_Applied);
+                Apply(c, c.targetTexture != null ? s_Applied : s_ScreenGroups);
         }
 
         static Camera PlayerCamera()

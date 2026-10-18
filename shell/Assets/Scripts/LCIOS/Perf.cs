@@ -1,4 +1,5 @@
 using System.Text;
+using UnityEngine.Profiling;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
@@ -28,7 +29,11 @@ namespace LCIOS
             SceneManager.sceneLoaded += (s, mode) => p.Invoke(nameof(Trim), 2f);
         }
 
-        void Start() { InvokeRepeating(nameof(Trim), 5f, 5f); }
+        void Start()
+        {
+            InvokeRepeating(nameof(Trim), 5f, 5f);
+            LoopTimer.Install();
+        }
 
         void Update()
         {
@@ -51,6 +56,9 @@ namespace LCIOS
             sb.Append($"[perf] '{SceneManager.GetActiveScene().name}' fps={m_Frames / m_Since:0.0} worst={m_Worst * 1000:0}ms");
             if (FrameTimingManager.GetLatestTimings(1, m_Timing) > 0)
                 sb.Append($" cpu={m_Timing[0].cpuMainThreadFrameTime:0.0}ms render={m_Timing[0].cpuRenderThreadFrameTime:0.0}ms gpu={m_Timing[0].gpuFrameTime:0.0}ms");
+            sb.Append(LoopTimer.Report(m_Frames));
+            sb.Append($" | mem alloc={Profiler.GetTotalAllocatedMemoryLong() >> 20}MB reserved={Profiler.GetTotalReservedMemoryLong() >> 20}MB" +
+                      $" managed={Profiler.GetMonoUsedSizeLong() >> 20}MB textures={Texture.currentTextureMemory >> 20}MB screen={Screen.width}x{Screen.height}");
             Log.Info(sb.ToString());
             m_Frames = 0; m_Since = 0; m_Worst = 0;
         }
