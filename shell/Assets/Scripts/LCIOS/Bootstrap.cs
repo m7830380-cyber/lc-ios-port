@@ -42,6 +42,7 @@ namespace LCIOS
                 CameraBudget.Install();
                 FloorFix.Install();
                 LanJoin.Install();
+                TerminalTouch.Install();
             }
             catch (Exception e)
             {

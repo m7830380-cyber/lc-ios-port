@@ -19,6 +19,9 @@ namespace LCIOS
     {
         static readonly int ZTestGBuffer = Shader.PropertyToID("_ZTestGBuffer");
         const int Equal = 3, LessEqual = 4;
+        // Only the floor grates: done on every alpha-tested material, leaves, posters and fences drew white where they
+        // should be see-through (2026-10-19).
+        static readonly HashSet<string> FloorGrates = new HashSet<string> { "CatwalkGrate", "FloorGrating", "metalholes" };
         readonly HashSet<int> m_Done = new HashSet<int>();
         string m_LastFloor;
 
@@ -49,7 +52,7 @@ namespace LCIOS
                 {
                     if (m == null || !m_Done.Add(m.GetInstanceID())) continue;
                     if (m.shader == null || !m.shader.name.StartsWith("HDRP/")) continue;
-                    if (m.IsKeywordEnabled("_ALPHATEST_ON") && m.HasProperty(ZTestGBuffer) && (int)m.GetFloat(ZTestGBuffer) == Equal)
+                    if (FloorGrates.Contains(m.name.Replace(" (Instance)", "")) && m.IsKeywordEnabled("_ALPHATEST_ON") && m.HasProperty(ZTestGBuffer) && (int)m.GetFloat(ZTestGBuffer) == Equal)
                     {
                         m.SetFloat(ZTestGBuffer, LessEqual);
                         grates.Add(m.name);

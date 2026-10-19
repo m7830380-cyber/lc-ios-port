@@ -73,9 +73,27 @@ namespace LCIOS
         void ApplyToAll()
         {
             if (s_Applied.Count == 0) return;
+            // The spectate camera (after death) draws into the player view's texture. As a monitor camera, and only
+            // set up once already on, it showed a picture a fraction of the size in the corner (2026-10-19).
+            var spectate = StartOfRound.Instance != null ? StartOfRound.Instance.spectateCamera : null;
+            if (spectate != null)
+            {
+                Apply(spectate, s_Applied);
+                if (spectate.enabled && spectate != m_LoggedSpectate)
+                {
+                    m_LoggedSpectate = spectate;
+                    var rt = spectate.targetTexture;
+                    Log.Info($"[renderfix] spectate camera on: target {(rt != null ? $"{rt.name} {rt.width}x{rt.height}" : "screen")} pixelRect={spectate.pixelRect}");
+                }
+            }
             foreach (var c in Camera.allCameras)
+            {
+                if (c == spectate) continue;
                 Apply(c, c.targetTexture == null ? s_ScreenGroups : c.name == "MainCamera" ? s_Applied : s_MonitorGroups);
+            }
         }
+
+        Camera m_LoggedSpectate;
 
         static Camera PlayerCamera()
         {
